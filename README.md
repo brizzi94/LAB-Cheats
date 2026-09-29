@@ -1,4 +1,4 @@
-# Messtools
+# LAB-Cheats
 
 Kleine Python-Skripte für die Arbeit im Labor.
 

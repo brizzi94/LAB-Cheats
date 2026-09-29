@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+
+# Messprotokolle des Z+ Skripts
+z_plus_log_*.csv

@@ -10,7 +10,7 @@ eine deutliche Wertaenderung (= Kontakt geloest / naechstes DUT angesetzt)
 und geht automatisch zum naechsten DUT ueber. Dadurch bleiben beide Haende
 fuer das Messen frei.
 
-Die CSV hat drei Spalten: "DUT_Nr", "Zeitstempel", "Spannung_V".
+Die CSV hat drei Spalten: "ZEIT" (Stunde.Minute), "DUT" (Nummer) und "mV".
 Jedes gemessene DUT ist eine eigene Zeile.
 
 Voraussetzungen:
@@ -108,19 +108,20 @@ def main():
 
     with open(OUTPUT_CSV, 'w', newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(['DUT_Nr', 'Zeitstempel', 'Spannung_V'])
+        writer.writerow(['ZEIT', 'DUT', 'mV'])
 
         print("\nMessung startet - Pruefspitzen ansetzen...")
 
         for i in range(1, anzahl + 1):
             voltage = warte_auf_stabilen_wert(inst)
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            ts = datetime.now().strftime("%H.%M")
+            mv = round(voltage * 1000, 2)
 
-            writer.writerow([i, ts, voltage])
+            writer.writerow([ts, i, mv])
             f.flush()
 
             piep(True)
-            print(f"DUT {i}/{anzahl}: {voltage:.5f} V")
+            print(f"DUT {i}/{anzahl}: {mv:.2f} mV")
 
             if i < anzahl:
                 warte_auf_kontaktwechsel(inst, voltage)

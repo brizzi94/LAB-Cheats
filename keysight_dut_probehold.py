@@ -11,7 +11,9 @@ und geht automatisch zum naechsten DUT ueber. Dadurch bleiben beide Haende
 fuer das Messen frei.
 
 Die CSV hat drei Spalten: "ZEIT" (Stunde.Minute), "DUT" (Nummer) und "mV".
-Jedes gemessene DUT ist eine eigene Zeile.
+Jedes gemessene DUT ist eine eigene Zeile. Trennzeichen ist Semikolon
+(nicht Komma), damit Excel mit deutscher Spracheinstellung die Datei
+automatisch in Spalten aufteilt statt alles in eine Zelle zu packen.
 
 Voraussetzungen:
     pip install pyvisa pyvisa-py pyusb
@@ -107,7 +109,7 @@ def main():
     anzahl = int(input("Anzahl DUTs: "))
 
     with open(OUTPUT_CSV, 'w', newline='') as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, delimiter=';')
         writer.writerow(['ZEIT', 'DUT', 'mV'])
 
         print("\nMessung startet - Pruefspitzen ansetzen...")

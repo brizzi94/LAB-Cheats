@@ -10,7 +10,7 @@ eine deutliche Wertaenderung (= Kontakt geloest / naechstes DUT angesetzt)
 und geht automatisch zum naechsten DUT ueber. Dadurch bleiben beide Haende
 fuer das Messen frei.
 
-Die CSV hat drei Spalten: "DUT_Nr", "Zeitstempel", "Spannung_V".
+Die CSV hat drei Spalten: "ZEIT" (Stunde.Minute), "DUT" (Nummer) und "mV".
 Jedes gemessene DUT ist eine eigene Zeile.
 
 Voraussetzungen:
@@ -99,50 +99,41 @@ def warte_auf_kontaktwechsel(inst, letzter_wert, reset_schwelle, poll_intervall,
         time.sleep(poll_intervall)
 
 
-def schreibe_csv(filename, dut_nummern, zeitstempel, spannungen):
-    with open(filename, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['DUT_Nr'] + dut_nummern)
-        writer.writerow(['Zeitstempel'] + zeitstempel)
-        writer.writerow(['Spannung_V'] + spannungen)
-
-
 def run_measurement(inst, config, log_callback, stop_event):
     """Fuehrt die Messreihe auf der bereits bestehenden Verbindung 'inst' aus.
     Oeffnet/schliesst keine eigene Verbindung -- das macht der Aufrufer."""
-    dut_nummern = []
-    zeitstempel = []
-    spannungen = []
-
     try:
         log_callback("Messung startet - Pruefspitzen ansetzen...\n")
 
-        for i in range(1, config['dut_anzahl'] + 1):
-            voltage = warte_auf_stabilen_wert(
-                inst,
-                config['stabil_toleranz'],
-                config['stabil_dauer'],
-                config['poll_intervall'],
-                stop_event,
-            )
-            ts = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with open(config['output_csv'], 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['ZEIT', 'DUT', 'mV'])
 
-            dut_nummern.append(i)
-            zeitstempel.append(ts)
-            spannungen.append(voltage)
-            schreibe_csv(config['output_csv'], dut_nummern, zeitstempel, spannungen)
-
-            piep(True)
-            log_callback(f"DUT {i}/{config['dut_anzahl']}: {voltage:.5f} V\n")
-
-            if i < config['dut_anzahl']:
-                warte_auf_kontaktwechsel(
+            for i in range(1, config['dut_anzahl'] + 1):
+                voltage = warte_auf_stabilen_wert(
                     inst,
-                    voltage,
-                    config['reset_schwelle'],
+                    config['stabil_toleranz'],
+                    config['stabil_dauer'],
                     config['poll_intervall'],
                     stop_event,
                 )
+                ts = datetime.now().strftime('%H.%M')
+                mv = round(voltage * 1000, 2)
+
+                writer.writerow([ts, i, mv])
+                f.flush()
+
+                piep(True)
+                log_callback(f"DUT {i}/{config['dut_anzahl']}: {mv:.2f} mV\n")
+
+                if i < config['dut_anzahl']:
+                    warte_auf_kontaktwechsel(
+                        inst,
+                        voltage,
+                        config['reset_schwelle'],
+                        config['poll_intervall'],
+                        stop_event,
+                    )
 
         log_callback(f"\nAlle {config['dut_anzahl']} DUTs gemessen. Ergebnisse in {config['output_csv']}\n")
         piep(True)

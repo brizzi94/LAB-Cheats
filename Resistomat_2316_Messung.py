@@ -114,6 +114,7 @@ ADDR = b"0000"
 # RESISTOMAT-Kommunikation (wie im bisherigen Skript)
 # ---------------------------------------------------------
 def send(ser, command: str) -> bool:
+    ser.reset_input_buffer()  # verwirft Daten von einem nicht abgeschlossenen vorherigen Austausch
     frame = EOT + ADDR + b"sr" + STX + command.encode("ascii") + LF + ETX
     ser.write(frame)
     return ser.read(1) == ACK
@@ -122,10 +123,15 @@ def send(ser, command: str) -> bool:
 def poll(ser):
     ser.write(EOT + ADDR + b"po" + ENQ)
     raw = ser.read_until(ETX)
-    if STX not in raw:
+    if not raw:
         return None
+    # Immer bestaetigen/abschliessen, sobald ueberhaupt eine Antwort kam -
+    # sonst wartet das Geraet auf das ACK und die naechste Anfrage bekommt
+    # ein verschobenes/falsches Byte als Antwort.
     ser.write(ACK)
     ser.read(1)  # trailing EOT
+    if STX not in raw:
+        return None
     return raw.split(STX, 1)[1].split(ETX, 1)[0].decode("ascii", errors="replace").strip()
 
 

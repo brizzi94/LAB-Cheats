@@ -6,9 +6,10 @@ Ablauf:
    Excel-Datei per Dialog waehlen.
 2. Das Fenster zeigt fortlaufend den aktuellen Messwert vom Geraet an
    (wird im Hintergrund alle 0.3s abgefragt).
-3. Du misst manuell am Geraet. Sobald der angezeigte Wert passt,
-   druecke ENTER (oder klicke "Bestaetigen") - der aktuell angezeigte
-   Wert wird mit Zeitstempel in die Excel-Datei geschrieben.
+3. Mit der Taste M kann eine neue Messung am Geraet ausgeloest werden
+   (sendet INIT). Sobald der angezeigte Wert passt, druecke ENTER
+   (oder klicke "Bestaetigen") - Wert, Einheit und aktueller
+   Messbereich werden mit Zeitstempel in die Excel-Datei geschrieben.
 4. Nach N Messungen ("Anzahl") ist Schluss, das Fenster meldet "Fertig".
 
 Vorher pruefen:
@@ -134,6 +135,17 @@ def fetch_value(ser):
     return poll(ser)
 
 
+def fetch_range(ser):
+    if not send(ser, "sens:fres:rang?"):
+        return None
+    return poll(ser)
+
+
+def trigger_measurement(ser) -> bool:
+    """Loest am Geraet eine neue Messung aus (INIT)."""
+    return send(ser, "init")
+
+
 def list_available_ports(timeout: float = 2.0):
     """Ermittelt verfuegbare COM-Ports mit Timeout, damit ein
     haengender Treiber/WMI-Aufruf den Dialog nicht blockiert."""
@@ -214,14 +226,14 @@ def ensure_excel_file(path: str):
         wb = Workbook()
         ws = wb.active
         ws.title = "Messwerte"
-        ws.append(["Datum/Zeit", "Messwert", "Einheit"])
+        ws.append(["Datum/Zeit", "Messwert", "Einheit", "Messbereich"])
     return wb, ws
 
 
-def append_measurement(wb, ws, path: str, number: float, unit: str):
+def append_measurement(wb, ws, path: str, number: float, unit: str, range_value):
     """Haengt eine Messung an und gibt die Zeilennummer zurueck, oder
     None wenn das Speichern fehlschlug (z.B. Datei in Excel geoeffnet)."""
-    ws.append([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), number, unit])
+    ws.append([datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), number, unit, range_value])
     try:
         wb.save(path)
         return ws.max_row
@@ -233,9 +245,10 @@ def append_measurement(wb, ws, path: str, number: float, unit: str):
 # ---------------------------------------------------------
 # Hintergrund-Thread: fragt laufend den aktuellen Wert ab
 # ---------------------------------------------------------
-def polling_worker(ser, value_queue, stop_event):
+def polling_worker(ser, value_queue, stop_event, serial_lock):
     while not stop_event.is_set():
-        raw_value = fetch_value(ser)
+        with serial_lock:
+            raw_value = fetch_value(ser)
         if raw_value is not None:
             value_queue.put(raw_value)
         time.sleep(POLL_INTERVAL)
@@ -254,6 +267,7 @@ class ResistomatUI:
         self.current_raw_value = None
         self.history_rows = []   # Excel-Zeilennummern, Index 0 = neuester Eintrag
         self.history_raw = []    # Rohwerte (Text), gleiche Reihenfolge wie history_rows
+        self.serial_lock = threading.Lock()  # schuetzt ser vor gleichzeitigem Zugriff
 
         self.wb, self.ws = ensure_excel_file(excel_path)
 
@@ -261,7 +275,7 @@ class ResistomatUI:
         self.stop_event = threading.Event()
         self.worker_thread = threading.Thread(
             target=polling_worker,
-            args=(ser, self.value_queue, self.stop_event),
+            args=(ser, self.value_queue, self.stop_event, self.serial_lock),
             daemon=True,
         )
         self.worker_thread.start()
@@ -271,7 +285,7 @@ class ResistomatUI:
 
     def build_ui(self):
         self.root.title("RESISTOMAT 2316 - Messung")
-        self.root.geometry("420x380")
+        self.root.geometry("420x410")
 
         tk.Label(self.root, text="Aktueller Messwert:", font=("Segoe UI", 12)).pack(pady=(20, 0))
         self.value_label = tk.Label(self.root, text="--", font=("Segoe UI", 28, "bold"))
@@ -279,6 +293,12 @@ class ResistomatUI:
 
         self.progress_label = tk.Label(self.root, text=f"Messung 0 / {self.target_count}", font=("Segoe UI", 11))
         self.progress_label.pack(pady=(0, 10))
+
+        self.trigger_button = tk.Button(
+            self.root, text="Messung ausloesen (M)", font=("Segoe UI", 10),
+            command=self.trigger_measurement
+        )
+        self.trigger_button.pack(pady=(0, 5))
 
         self.confirm_button = tk.Button(
             self.root, text="Bestaetigen (Enter)", font=("Segoe UI", 12),
@@ -298,6 +318,8 @@ class ResistomatUI:
         self.edit_button.pack(pady=(0, 15))
 
         self.root.bind("<Return>", lambda event: self.confirm_measurement())
+        self.root.bind("<KeyPress-m>", lambda event: self.trigger_measurement())
+        self.root.bind("<KeyPress-M>", lambda event: self.trigger_measurement())
 
     def poll_queue(self):
         try:
@@ -310,6 +332,21 @@ class ResistomatUI:
 
         if self.count < self.target_count:
             self.root.after(150, self.poll_queue)
+
+    def trigger_measurement(self):
+        if self.count >= self.target_count:
+            return
+
+        def do_trigger():
+            with self.serial_lock:
+                ok = trigger_measurement(self.ser)
+            if not ok:
+                self.root.after(0, lambda: messagebox.showwarning(
+                    "Trigger fehlgeschlagen",
+                    "Das Geraet hat den Mess-Trigger (INIT) nicht bestaetigt."
+                ))
+
+        threading.Thread(target=do_trigger, daemon=True).start()
 
     def confirm_measurement(self):
         if self.count >= self.target_count:
@@ -324,7 +361,10 @@ class ResistomatUI:
             return
         number, unit = parsed
 
-        row = append_measurement(self.wb, self.ws, self.excel_path, number, unit)
+        with self.serial_lock:
+            range_value = fetch_range(self.ser)
+
+        row = append_measurement(self.wb, self.ws, self.excel_path, number, unit, range_value)
         if row is None:
             messagebox.showerror(
                 "Excel gesperrt",

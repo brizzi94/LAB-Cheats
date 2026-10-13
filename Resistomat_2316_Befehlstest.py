@@ -17,8 +17,9 @@ Nutzung:
 Sicherheit:
 - Zuerst werden nur LESENDE Abfragen (Befehle, die mit "?" enden)
   gesendet. Diese veraendern den Geraetezustand nicht.
-- Zustandsveraendernde Befehle (Messung starten/stoppen, *RST) werden
-  nur nach expliziter Bestaetigung (separat abgefragt) getestet.
+- Zustandsveraendernde Befehle (Messung starten/stoppen) werden nur
+  nach expliziter Bestaetigung getestet.
+- *RST (Werkseinstellungen/Grundzustand) wird NICHT getestet.
 
 Vorher pruefen:
 - pip install pyserial
@@ -107,9 +108,6 @@ ACTION_COMMANDS = [
     ("Kontinuierliche Messung AUS", "init:cont off"),
 ]
 
-# Besonders eingreifend: setzt Geraete-Einstellungen zurueck
-RESET_COMMAND = ("Grundzustand (*RST)", "*rst")
-
 
 def pick_com_port():
     ports = [p.device for p in serial.tools.list_ports.comports()]
@@ -182,15 +180,6 @@ def main():
         log_lines.append("")
         log_lines.append("--- Zustandsveraendernde Befehle ---")
         run_batch(ser, ACTION_COMMANDS, expect_response=False, log_lines=log_lines)
-
-        answer2 = input(
-            "\nAuch *RST (Grundzustand, setzt Geraete-Einstellungen zurueck) testen? [j/N]: "
-        ).strip().lower()
-        if answer2 == "j":
-            print("\n--- Teste *RST ---")
-            log_lines.append("")
-            log_lines.append("--- *RST ---")
-            run_batch(ser, [RESET_COMMAND], expect_response=False, log_lines=log_lines)
 
     ser.close()
 

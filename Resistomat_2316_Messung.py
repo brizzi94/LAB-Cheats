@@ -117,7 +117,10 @@ def send(ser, command: str) -> bool:
     ser.reset_input_buffer()  # verwirft Daten von einem nicht abgeschlossenen vorherigen Austausch
     frame = EOT + ADDR + b"sr" + STX + command.encode("ascii") + LF + ETX
     ser.write(frame)
-    return ser.read(1) == ACK
+    response = ser.read(1)
+    if response != ACK:
+        print(f"[DEBUG] Befehl {command!r} nicht bestaetigt, erhalten: {response!r}")
+    return response == ACK
 
 
 def poll(ser):
@@ -251,12 +254,13 @@ def append_measurement(wb, ws, path: str, number: float, unit: str, range_value)
 # ---------------------------------------------------------
 # Hintergrund-Thread: fragt laufend den aktuellen Wert ab
 # ---------------------------------------------------------
-def polling_worker(ser, value_queue, stop_event, serial_lock):
+def polling_worker(ser, value_queue, stop_event, serial_lock, pause_event):
     while not stop_event.is_set():
-        with serial_lock:
-            raw_value = fetch_value(ser)
-        if raw_value is not None:
-            value_queue.put(raw_value)
+        if not pause_event.is_set():
+            with serial_lock:
+                raw_value = fetch_value(ser)
+            if raw_value is not None:
+                value_queue.put(raw_value)
         time.sleep(POLL_INTERVAL)
 
 
@@ -274,6 +278,7 @@ class ResistomatUI:
         self.history_rows = []   # Excel-Zeilennummern, Index 0 = neuester Eintrag
         self.history_raw = []    # Rohwerte (Text), gleiche Reihenfolge wie history_rows
         self.serial_lock = threading.Lock()  # schuetzt ser vor gleichzeitigem Zugriff
+        self.polling_paused = threading.Event()  # pausiert Hintergrund-Abfrage waehrend eines Triggers
 
         self.wb, self.ws = ensure_excel_file(excel_path)
 
@@ -281,7 +286,7 @@ class ResistomatUI:
         self.stop_event = threading.Event()
         self.worker_thread = threading.Thread(
             target=polling_worker,
-            args=(ser, self.value_queue, self.stop_event, self.serial_lock),
+            args=(ser, self.value_queue, self.stop_event, self.serial_lock, self.polling_paused),
             daemon=True,
         )
         self.worker_thread.start()
@@ -344,8 +349,12 @@ class ResistomatUI:
             return
 
         def do_trigger():
+            self.polling_paused.set()
+            time.sleep(0.3)  # laufende Hintergrund-Abfrage sicher auslaufen lassen
             with self.serial_lock:
                 ok = trigger_measurement(self.ser)
+            time.sleep(0.5)  # Geraet Zeit geben, bevor das Polling weitermacht
+            self.polling_paused.clear()
             if not ok:
                 self.root.after(0, lambda: messagebox.showwarning(
                     "Trigger fehlgeschlagen",

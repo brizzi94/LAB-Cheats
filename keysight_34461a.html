@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Keysight 34461A - Messung</title>
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --text:#1c1e21; --muted:#6b7280; --accent:#1a6fd4; --border:#d5d9e0; --ok:#1a8a4a; --err:#c0392b; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#16181c; --card:#20242a; --text:#e8eaed; --muted:#9aa3ad; --accent:#4c9aff; --border:#343a43; --ok:#4cc27f; --err:#ff6b5b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--text); display:flex; justify-content:center; padding:24px; }
+  .wrap { width:100%; max-width:680px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; }
+  h1 { font-size:18px; margin:0 0 16px; }
+  h2 { font-size:14px; margin:22px 0 2px; padding-top:14px; border-top:1px solid var(--border); }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  input[type=number], input[type=text], select, textarea { width:100%; padding:8px; font-size:15px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-family:inherit; }
+  textarea { font-family:Consolas, monospace; font-size:13px; min-height:52px; resize:vertical; }
+  button { font-family:inherit; font-size:15px; padding:10px 16px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-size:17px; padding:12px 20px; }
+  button.stop { background:var(--err); border-color:var(--err); color:#fff; font-size:17px; padding:12px 20px; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .row { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+  .modes { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-top:6px; }
+  .modes label { margin:0; padding:12px; border:1px solid var(--border); border-radius:10px; cursor:pointer; color:var(--text); background:var(--bg); }
+  .modes label:has(input:checked) { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .modes input { margin:0 6px 0 0; }
+  .modes strong { font-size:14px; }
+  .modes span.d { display:block; margin-top:4px; font-size:12px; color:var(--muted); line-height:1.35; }
+  @media (max-width:560px) { .modes, .grid2 { grid-template-columns:1fr; } body { padding:16px; } }
+  .file { display:flex; gap:8px; }
+  .file input { flex:1; min-width:0; }
+  .value { font-size:40px; font-weight:700; text-align:center; margin:8px 0; font-variant-numeric:tabular-nums; }
+  .center { text-align:center; }
+  .progress { text-align:center; color:var(--muted); margin-bottom:8px; }
+  .status { font-size:13px; text-align:center; min-height:18px; }
+  .status.ok { color:var(--ok); } .status.err { color:var(--err); }
+  .hint { font-size:13px; color:var(--muted); margin-top:6px; word-break:break-all; }
+  .phase { margin:10px 0 4px; padding:10px 12px; border-radius:8px; background:var(--bg); font-size:14px; text-align:center; }
+  .bar { height:6px; border-radius:3px; background:var(--border); margin-top:8px; overflow:hidden; }
+  .bar > div { height:100%; width:0; background:var(--accent); transition:width .2s; }
+  .bar.ok > div { background:var(--ok); }
+  ul { list-style:none; padding:0; margin:8px 0 0; max-height:220px; overflow-y:auto; font-family:Consolas, monospace; font-size:14px; border:1px solid var(--border); border-radius:8px; }
+  li { padding:6px 10px; border-bottom:1px solid var(--border); }
+  li:last-child { border-bottom:none; }
+  .hidden { display:none !important; }
+  .tip { position:relative; display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; margin-left:6px; border-radius:50%; border:1px solid var(--muted); color:var(--muted); font-size:11px; font-weight:600; cursor:help; vertical-align:middle; user-select:none; }
+  .tip:hover, .tip:focus { color:var(--accent); border-color:var(--accent); outline:none; }
+  .tipbox { display:none; position:absolute; z-index:20; top:calc(100% + 6px); left:-6px; width:310px; max-width:78vw; padding:10px 12px; background:var(--card); color:var(--text); border:1px solid var(--border); border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,.28); font-size:12.5px; font-weight:400; line-height:1.45; text-align:left; white-space:normal; word-break:normal; cursor:default; }
+  .tipbox::before { content:""; position:absolute; top:-8px; left:0; right:0; height:8px; }
+  .tip:hover .tipbox, .tip:focus .tipbox { display:block; }
+  .chartHead { display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+  .chartHead strong { font-size:14px; }
+  #stats { font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  #chart { width:100%; height:280px; display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card" id="setup">
+    <h1>Keysight 34461A - Messung</h1>
+
+    <label>Modus<span class="tip" tabindex="0">?<span class="tipbox">Probe-Hold: freihändige DUT-Serie. Ein stabiler Wert wird automatisch erfasst, danach wird auf den Kontaktwechsel zum nächsten DUT gewartet. Messwerte aufzeichnen: Dauermessung im festen Intervall mit Live-Verlauf, auch über Stunden. Einzelmessungen: Der aktuelle Wert wird angezeigt und mit Enter übernommen.</span></span></label>
+    <div class="modes">
+      <label><input type="radio" name="mode" value="probe" checked><strong>Probe-Hold</strong><span class="d">DUT-Serie freihändig: stabiler Wert wird automatisch erfasst</span></label>
+      <label><input type="radio" name="mode" value="trend"><strong>Messwerte aufzeichnen</strong><span class="d">Dauermessung im festen Intervall mit Verlauf</span></label>
+      <label><input type="radio" name="mode" value="manual"><strong>Einzelmessungen</strong><span class="d">Wert ansehen und mit Enter übernehmen</span></label>
+    </div>
+
+    <h2>Verbindung</h2>
+    <div class="grid2">
+      <div>
+        <label for="ip">IP-Adresse des Geräts<span class="tip" tabindex="0">?<span class="tipbox">Am Gerät unter Utility → I/O Config → LAN Settings ablesen.</span></span></label>
+        <input type="text" id="ip" value="169.254.4.61">
+      </div>
+      <div>
+        <label for="conn">Verbindungsart<span class="tip" tabindex="0">?<span class="tipbox">Automatisch: zuerst Raw-Socket (Port 5025), bei Fehlschlag VXI-11. Wie in den bisherigen Skripten.</span></span></label>
+        <select id="conn">
+          <option value="auto">Automatisch (Socket, sonst VXI-11)</option>
+          <option value="socket">nur Socket (Port 5025)</option>
+          <option value="vxi11">nur VXI-11</option>
+        </select>
+      </div>
+    </div>
+
+    <h2>Messung am Gerät</h2>
+    <div class="grid2">
+      <div>
+        <label for="func">Messfunktion</label>
+        <select id="func"></select>
+      </div>
+      <div id="rangeBox">
+        <label for="range">Messbereich<span class="tip" tabindex="0">?<span class="tipbox">Automatik: Das Gerät wählt den Bereich selbst (etwas langsamer, beim Bereichswechsel kurze Sprünge). Fester Bereich: schneller und ruhiger, wenn die Größenordnung bekannt ist.</span></span></label>
+        <select id="range"></select>
+      </div>
+      <div id="nplcBox">
+        <label for="nplc">Integrationszeit (NPLC)<span class="tip" tabindex="0">?<span class="tipbox">Messdauer in Netzperioden (1 PLC = 20 ms bei 50 Hz). Mehr NPLC = ruhigerer Wert, aber langsamer: 0,02 ≈ 0,4 ms, 1 = 20 ms, 10 = 200 ms, 100 = 2 s pro Messung. Ab 1 NPLC wird Netzbrummen unterdrückt.</span></span></label>
+        <select id="nplc"></select>
+      </div>
+      <div>
+        <label for="unit">Anzeige- und Speichereinheit<span class="tip" tabindex="0">?<span class="tipbox">In dieser Einheit werden die Werte angezeigt und in der CSV gespeichert. Toleranzen beim Probe-Hold gelten ebenfalls in dieser Einheit.</span></span></label>
+        <select id="unit"></select>
+      </div>
+    </div>
+    <label for="extra">Zusätzliche SCPI-Befehle (optional, eine Zeile pro Befehl)<span class="tip" tabindex="0">?<span class="tipbox">Werden nach der Konfiguration ans Gerät geschickt, z.B. SENS:VOLT:DC:ZERO:AUTO OFF oder SENS:VOLT:DC:IMP:AUTO ON. Keine Abfragen (?). Fehler meldet das Gerät beim Verbinden.</span></span></label>
+    <textarea id="extra" spellcheck="false"></textarea>
+
+    <div id="box-probe">
+      <h2>Probe-Hold</h2>
+      <div class="grid2">
+        <div>
+          <label for="dut_count">Anzahl DUTs</label>
+          <input type="number" id="dut_count" min="1" value="10">
+        </div>
+        <div>
+          <label for="beep">Piepton bei Erfassung<span class="tip" tabindex="0">?<span class="tipbox">PC: Ton über die Lautsprecher des PCs (Browser). Gerät: Das Multimeter piept selbst (SYST:BEEP), hörbar direkt am Messplatz. Am Ende der Serie ertönt ein Doppelton.</span></span></label>
+          <select id="beep">
+            <option value="pc">PC</option>
+            <option value="device">Gerät</option>
+            <option value="both">PC und Gerät</option>
+            <option value="off">aus</option>
+          </select>
+        </div>
+        <div>
+          <label for="tol">Stabilitätstoleranz (<span class="u"></span>)<span class="tip" tabindex="0">?<span class="tipbox">So stark dürfen die letzten Werte höchstens schwanken (Max − Min), damit der Wert als stabil gilt und erfasst wird. Gespeichert wird der Mittelwert dieser Werte.</span></span></label>
+          <input type="number" id="tol" min="0" step="any" value="1">
+        </div>
+        <div>
+          <label for="stable_n">Anzahl stabile Werte<span class="tip" tabindex="0">?<span class="tipbox">So viele aufeinanderfolgende Werte müssen innerhalb der Toleranz liegen. Zusammen mit dem Abfrageintervall ergibt das die Mindest-Haltezeit der Prüfspitzen.</span></span></label>
+          <input type="number" id="stable_n" min="2" value="5">
+        </div>
+        <div>
+          <label for="reset">Wechsel-Schwelle (<span class="u"></span>)<span class="tip" tabindex="0">?<span class="tipbox">Weicht der Wert um mehr als diese Schwelle vom zuletzt erfassten ab, gilt der Kontakt als gelöst bzw. das nächste DUT als angesetzt. Überlast (z.B. offene Spitzen bei Widerstand) zählt immer als Wechsel.</span></span></label>
+          <input type="number" id="reset" min="0" step="any" value="50">
+        </div>
+        <div>
+          <label for="idle">Leerlauf-Schwelle (<span class="u"></span>, 0 = aus)<span class="tip" tabindex="0">?<span class="tipbox">Werte, deren Betrag kleiner ist, gelten als "keine Spitze angesetzt" und werden nie erfasst. Verhindert, dass bei abgehobenen Spitzen ein Wert um 0 als DUT gespeichert wird.</span></span></label>
+          <input type="number" id="idle" min="0" step="any" value="0">
+        </div>
+        <div>
+          <label for="poll">Abfrageintervall (s)<span class="tip" tabindex="0">?<span class="tipbox">Pause zwischen zwei Abfragen. Die Messdauer selbst (NPLC, Autorange) kommt dazu.</span></span></label>
+          <input type="number" id="poll" min="0.05" step="0.05" value="0.15">
+        </div>
+      </div>
+    </div>
+
+    <div id="box-trend" class="hidden">
+      <h2>Messwerte aufzeichnen</h2>
+      <div class="grid2">
+        <div>
+          <label for="interval">Messintervall (Sekunden)<span class="tip" tabindex="0">?<span class="tipbox">Zeit zwischen zwei gespeicherten Werten. Dauert eine Messung länger (z.B. NPLC 100 ≈ 2 s), folgt die nächste entsprechend später.</span></span></label>
+          <input type="number" id="interval" min="0.1" step="0.1" value="0.5">
+        </div>
+        <div>
+          <label for="trend_count">Anzahl Messungen (0 = unbegrenzt)<span class="tip" tabindex="0">?<span class="tipbox">Bei 0 läuft die Aufzeichnung, bis du auf Stoppen drückst. Jeder Wert wird sofort in die CSV geschrieben, auch wenn der Browser geschlossen wird.</span></span></label>
+          <input type="number" id="trend_count" min="0" value="0">
+        </div>
+      </div>
+    </div>
+
+    <div id="box-manual" class="hidden">
+      <h2>Einzelmessungen</h2>
+      <label for="manual_count">Anzahl Messungen</label>
+      <input type="number" id="manual_count" min="1" value="30">
+    </div>
+
+    <h2>Datei</h2>
+    <label for="path">CSV-Datei<span class="tip" tabindex="0">?<span class="tipbox">Eine vorhandene Datei wird weitergeführt: Neue Werte werden angehängt. Jeder Wert wird sofort gespeichert. Ist die Datei in Excel geöffnet, werden die Werte zwischengespeichert und nachgeschrieben, sobald sie wieder frei ist.</span></span></label>
+    <div class="file">
+      <input type="text" id="path" value="messungen.csv">
+      <button id="btnBrowse">Durchsuchen …</button>
+    </div>
+    <div class="hint" id="fileInfo"></div>
+
+    <div class="row">
+      <button class="primary" id="btnConnect">Verbinden &amp; Gerät einstellen</button>
+    </div>
+    <div class="status" id="setupStatus" style="text-align:left;margin-top:10px;white-space:pre-line"></div>
+  </div>
+
+  <div class="card hidden" id="measure">
+    <div class="center" style="color:var(--muted)" id="modeTitle">Aktueller Messwert</div>
+    <div class="value" id="value">--</div>
+    <div class="progress" id="progress"></div>
+    <div class="status ok" id="devInfo"></div>
+    <div class="phase hidden" id="phase"><span id="phaseText"></span><div class="bar" id="bar"><div></div></div></div>
+    <div class="row" style="justify-content:center">
+      <button class="primary hidden" id="btnStart">Start (Enter)</button>
+      <button class="primary hidden" id="btnConfirm" title="Übernimmt den aktuell angezeigten Wert und speichert ihn.">Bestätigen (Enter)</button>
+      <button class="hidden" id="btnUndo">Letzten überschreiben (Strg+Z)</button>
+    </div>
+    <div class="status" id="status" style="margin-top:10px"></div>
+    <div style="margin-top:12px; color:var(--muted); font-size:13px">Letzte Einträge</div>
+    <ul id="history"></ul>
+    <div class="hint" id="pathInfo"></div>
+    <div class="row" style="justify-content:space-between">
+      <button id="btnMenu">← Zurück zum Menü</button>
+      <button id="btnQuit">Programm beenden</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="chartCard">
+    <div class="chartHead">
+      <strong>Verlauf der Messwerte</strong>
+      <span id="stats"></span>
+    </div>
+    <canvas id="chart"></canvas>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const MAX_HISTORY = 200;
+const FIELDS = ["ip","conn","func","range","nplc","unit","extra","path","dut_count","beep","tol","stable_n","reset","idle","poll","interval","trend_count","manual_count"];
+
+let META = null;
+let S = null;                       // letzter Zustand vom Programm
+let rowsFrom = 0, rowsVer = -1;
+let nrs = [], vals = [], times = [];
+let lastEvent = null;
+let polling = false;
+let audio = null;
+let unitFactor = 1;
+
+async function api(path, body) {
+  const r = await fetch(path, { method:"POST", headers:{ "Content-Type":"application/json" }, body:JSON.stringify(body || {}) });
+  return r.json();
+}
+function setStatus(el, text, kind) {
+  el.textContent = text || "";
+  el.className = "status" + (kind ? " " + kind : "");
+}
+function fmt(v) {
+  return Number(v.toPrecision(7)).toLocaleString("de-DE", { useGrouping:false, maximumFractionDigits:12 });
+}
+function fmtTime(s, step) {
+  if (step < 60) return fmt(s) + " s";
+  const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), r = Math.round(s % 60);
+  return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(r).padStart(2, "0");
+}
+const mode = () => document.querySelector("input[name=mode]:checked").value;
+
+// ---------- Piepton (PC) ----------
+function ensureAudio() {
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {}
+}
+function tone(freq, dur, delay) {
+  const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime + delay;
+  o.frequency.value = freq; g.gain.setValueAtTime(0.2, t); g.gain.setValueAtTime(0, t + dur);
+  o.connect(g).connect(audio.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function beep(kind) {
+  if (!audio) return;
+  if (kind === "err") tone(600, 0.3, 0);
+  else { tone(1500, 0.15, 0); if (kind === "done") tone(1500, 0.15, 0.25); }
+}
+
+// ---------- Menue ----------
+function fillSelect(sel, items, value) {
+  sel.innerHTML = "";
+  for (const [v, text] of items) { const o = document.createElement("option"); o.value = v; o.textContent = text; sel.appendChild(o); }
+  if (value !== undefined && items.some(i => i[0] === value)) sel.value = value;
+}
+function onFunctionChange() {
+  const f = META.functions[$("func").value];
+  fillSelect($("range"), [["AUTO", "Automatik"], ...f.ranges]);
+  $("rangeBox").classList.toggle("hidden", !f.ranges.length);
+  $("nplcBox").classList.toggle("hidden", !f.nplc);
+  fillSelect($("unit"), f.units.map(u => [u[0], u[0]]));
+  unitFactor = f.units[0][1];
+  updateUnitLabels();
+}
+function onUnitChange() {
+  // Toleranzen in die neue Einheit umrechnen
+  const f = META.functions[$("func").value];
+  const nf = f.units.find(u => u[0] === $("unit").value)[1];
+  for (const id of ["tol", "reset", "idle"]) {
+    const v = parseFloat($(id).value);
+    if (!isNaN(v)) $(id).value = parseFloat((v * nf / unitFactor).toPrecision(6));
+  }
+  unitFactor = nf;
+  updateUnitLabels();
+}
+function updateUnitLabels() {
+  document.querySelectorAll(".u").forEach(el => el.textContent = $("unit").value);
+}
+function onModeChange() {
+  for (const m of ["probe", "trend", "manual"]) $("box-" + m).classList.toggle("hidden", mode() !== m);
+}
+function readForm() {
+  const cfg = { mode: mode() };
+  for (const id of FIELDS) cfg[id === "func" ? "function" : id] = $(id).value;
+  return cfg;
+}
+function applyConfig(c) {
+  if (c.mode) { const r = document.querySelector(`input[name=mode][value="${c.mode}"]`); if (r) r.checked = true; }
+  if (c.function && META.functions[c.function]) $("func").value = c.function;
+  onFunctionChange();
+  for (const id of FIELDS) {
+    const key = id === "func" ? "function" : id;
+    if (id !== "func" && c[key] !== undefined && c[key] !== null) $(id).value = c[key];
+  }
+  if (!$("range").value) $("range").value = "AUTO";
+  if (!$("unit").value) $("unit").selectedIndex = 0;
+  const f = META.functions[$("func").value];
+  unitFactor = (f.units.find(u => u[0] === $("unit").value) || f.units[0])[1];
+  updateUnitLabels();
+  onModeChange();
+}
+function showFileInfo(r) {
+  if (!r || !r.ok) return;
+  $("fileInfo").textContent = r.path + (r.existing >= 0 ? `  (vorhanden, ${r.existing} Zeilen - wird weitergeführt)` : "  (neue Datei)");
+}
+
+document.querySelectorAll("input[name=mode]").forEach(r => r.onchange = onModeChange);
+$("func").onchange = onFunctionChange;
+$("unit").onchange = onUnitChange;
+$("path").onchange = async () => showFileInfo(await api("/api/fileinfo", { path: $("path").value }));
+$("btnBrowse").onclick = async () => {
+  $("btnBrowse").disabled = true;
+  setStatus($("setupStatus"), "Speichern-Dialog ist geöffnet (evtl. hinter dem Browser) …");
+  const r = await api("/api/browse", { path: $("path").value });
+  $("btnBrowse").disabled = false;
+  setStatus($("setupStatus"), r.ok ? "" : r.err, r.ok ? "" : "err");
+  if (r.ok && r.path) { $("path").value = r.path; showFileInfo(r); }
+};
+
+$("btnConnect").onclick = async () => {
+  ensureAudio();
+  $("btnConnect").disabled = true;
+  setStatus($("setupStatus"), "Verbinde und stelle Gerät ein …");
+  let r;
+  try { r = await api("/api/connect", readForm()); }
+  catch (e) { r = { ok:false, err:"Programm nicht erreichbar - läuft das Python-Fenster noch?" }; }
+  $("btnConnect").disabled = false;
+  if (!r.ok) { setStatus($("setupStatus"), r.err || "Verbindung fehlgeschlagen.", "err"); return; }
+  setStatus($("setupStatus"), "");
+  showMeasure();
+};
+
+// ---------- Messansicht ----------
+function resetRows() {
+  rowsFrom = 0; rowsVer = -1; nrs = []; vals = []; times = []; lastEvent = null;
+  $("history").innerHTML = "";
+}
+function showMeasure() {
+  resetRows();
+  $("setup").classList.add("hidden");
+  $("measure").classList.remove("hidden");
+  $("chartCard").classList.remove("hidden");
+  if (!polling) { polling = true; refresh(); }
+}
+function showSetup() {
+  $("measure").classList.add("hidden");
+  $("chartCard").classList.add("hidden");
+  $("setup").classList.remove("hidden");
+}
+function historyText(i) {
+  const v = `${fmt(vals[i])} ${S.unit}`;
+  if (S.mode === "probe") return `DUT ${nrs[i]}: ${v}`;
+  if (S.mode === "trend") return `#${nrs[i]} (${fmtTime(times[i], 1)}): ${v}`;
+  return `#${nrs[i]}: ${v}`;
+}
+function addHistory(i) {
+  const ul = $("history"), li = document.createElement("li");
+  li.textContent = historyText(i);
+  ul.insertBefore(li, ul.firstChild);
+  while (ul.children.length > MAX_HISTORY) ul.removeChild(ul.lastChild);
+}
+
+async function refresh() {
+  if ($("measure").classList.contains("hidden")) { polling = false; return; }
+  let s;
+  try { s = await (await fetch(`/api/state?since=${rowsFrom}&ver=${rowsVer}`, { cache:"no-store" })).json(); }
+  catch (e) {
+    setStatus($("status"), "Programm nicht erreichbar - läuft das Python-Fenster noch?", "err");
+    setTimeout(refresh, 1000);
+    return;
+  }
+  apply(s);
+  setTimeout(refresh, 250);
+}
+
+function apply(s) {
+  S = s;
+  let changed = false;
+  if (s.rows_ver !== rowsVer) {
+    nrs = []; vals = []; times = []; $("history").innerHTML = ""; rowsVer = s.rows_ver; changed = true;
+  }
+  for (const r of s.rows) { nrs.push(r[0]); vals.push(r[1]); times.push(r[2]); addHistory(nrs.length - 1); changed = true; }
+  rowsFrom = s.rows_from + s.rows.length;
+
+  if (lastEvent === null) lastEvent = s.event_seq;
+  else if (s.event_seq > lastEvent) { lastEvent = s.event_seq; if (s.beep_pc || s.event_kind === "err") beep(s.event_kind); }
+
+  $("modeTitle").textContent = { probe:"Probe-Hold · Aktueller Messwert", trend:"Messwerte aufzeichnen · Aktueller Messwert", manual:"Einzelmessungen · Aktueller Messwert" }[s.mode] || "Aktueller Messwert";
+  $("value").textContent = !s.connected ? "--" : s.overload ? "Überlast" : s.current === null ? "--" : `${fmt(s.current)} ${s.unit}`;
+  $("devInfo").textContent = s.info.length ? "Gerät eingestellt ✓ " + s.info.join(" · ") : "";
+  $("pathInfo").textContent = s.path ? "Datei: " + s.path : "";
+  setStatus($("status"), s.status, s.status_kind);
+  updateProgress(s);
+  if (changed) drawChart();
+}
+
+function updateProgress(s) {
+  const of = s.target > 0 ? ` / ${s.target}` : "";
+  const btnStart = $("btnStart"), btnConfirm = $("btnConfirm"), btnUndo = $("btnUndo");
+  btnStart.classList.toggle("hidden", s.mode === "manual");
+  btnConfirm.classList.toggle("hidden", s.mode !== "manual");
+  btnUndo.classList.toggle("hidden", s.mode === "trend");
+  $("phase").classList.toggle("hidden", s.mode !== "probe");
+
+  if (s.mode === "manual") {
+    $("progress").textContent = s.done ? `Fertig: ${s.count}${of} (Korrektur noch möglich)` : `Messung ${s.count}${of}`;
+    btnConfirm.disabled = s.done || !s.connected;
+    btnUndo.textContent = "Letzten überschreiben (Strg+Z)";
+    btnUndo.disabled = s.count === 0 || !s.connected;
+    return;
+  }
+  btnStart.textContent = s.running ? "Stoppen (Enter)" : (s.count > 0 ? "Fortsetzen (Enter)" : "Start (Enter)");
+  btnStart.className = s.running ? "stop" : "primary";
+  btnStart.disabled = s.done || !s.connected;
+
+  if (s.mode === "trend") {
+    const iv = fmt(s.interval);
+    $("progress").textContent = s.done ? `Fertig: ${s.count}${of} Messungen (alle ${iv} s)`
+      : (s.running ? `Aufzeichnung läuft: ${s.count}${of} Messungen (alle ${iv} s)` : `Bereit: ${s.count}${of} Messungen (Intervall ${iv} s)`);
+    return;
+  }
+  // Probe-Hold
+  btnUndo.textContent = "Letztes DUT neu messen (Strg+Z)";
+  btnUndo.disabled = s.count === 0 || !s.connected;
+  $("progress").textContent = s.done ? `Fertig: alle ${s.target} DUTs gemessen` : `DUT ${s.count}${of} erfasst`;
+  const bar = $("bar");
+  let text = "", fill = 0, ok = false;
+  if (!s.connected) text = "Keine Verbindung zum Gerät.";
+  else if (s.done) { text = "Alle DUTs gemessen ✓"; fill = 1; ok = true; }
+  else if (!s.running) text = s.count ? "Pausiert - Fortsetzen (Enter)" : "Bereit - Start (Enter) drücken, dann Prüfspitzen ansetzen.";
+  else if (s.phase === "wechsel") { text = `DUT ${s.count} erfasst ✓ - Prüfspitzen lösen und nächstes DUT ansetzen`; fill = 1; ok = true; }
+  else {
+    fill = s.fill / s.stable_n;
+    ok = s.spread !== null && s.spread < s.tol;
+    text = `DUT ${s.count + 1}: warte auf stabilen Wert … ${s.fill}/${s.stable_n}` +
+      (s.spread !== null ? ` · Streuung ${fmt(s.spread)} ${s.unit} (Toleranz ${fmt(s.tol)})` : "");
+  }
+  $("phaseText").textContent = text;
+  bar.className = "bar" + (ok ? " ok" : "");
+  bar.firstElementChild.style.width = Math.round(fill * 100) + "%";
+}
+
+$("btnStart").onclick = () => { ensureAudio(); api(S && S.running ? "/api/stop" : "/api/start"); };
+$("btnConfirm").onclick = () => api("/api/confirm");
+$("btnUndo").onclick = () => api("/api/undo");
+$("btnMenu").onclick = async () => {
+  if (S && S.running && !confirm("Die Messung läuft noch. Wirklich stoppen und zurück zum Menü?")) return;
+  await api("/api/disconnect");
+  showSetup();
+};
+$("btnQuit").onclick = async () => {
+  if (!confirm("Programm beenden? Die Verbindung zum Gerät wird getrennt.")) return;
+  try { await api("/api/quit"); } catch (e) {}
+  document.querySelector(".wrap").innerHTML = '<div class="card center">Programm beendet. Dieses Fenster kann geschlossen werden.</div>';
+};
+document.addEventListener("keydown", e => {
+  if ($("measure").classList.contains("hidden") || !S) return;
+  if (e.key === "Enter") {
+    e.preventDefault();
+    if (S.mode === "manual") $("btnConfirm").click(); else if (!$("btnStart").disabled) $("btnStart").click();
+  } else if (e.ctrlKey && e.key.toLowerCase() === "z" && S.mode !== "trend") {
+    e.preventDefault();
+    if (!$("btnUndo").disabled) $("btnUndo").click();
+  }
+});
+
+// ---------- Diagramm ----------
+function drawChart() {
+  const cv = $("chart");
+  if (!cv.offsetWidth || !S) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const ctx = cv.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const css = getComputedStyle(document.documentElement);
+  const cText = css.getPropertyValue("--text").trim(), cMuted = css.getPropertyValue("--muted").trim();
+  const cBorder = css.getPropertyValue("--border").trim(), cAccent = css.getPropertyValue("--accent").trim();
+  const cOk = css.getPropertyValue("--ok").trim();
+  const trend = S.mode === "trend";
+  const n = vals.length;
+
+  const L = 66, R = 14, T = 12, B = 30;
+  const pw = W - L - R, ph = H - T - B;
+  ctx.font = "12px system-ui, sans-serif";
+
+  if (!n) {
+    ctx.fillStyle = cMuted; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(trend ? "Noch keine Messwerte - Aufzeichnung starten" : "Noch keine Messwerte erfasst", W / 2, H / 2);
+    $("stats").textContent = "";
+    return;
+  }
+
+  let vmin = Infinity, vmax = -Infinity, sum = 0;
+  for (const v of vals) { if (v < vmin) vmin = v; if (v > vmax) vmax = v; sum += v; }
+  const mean = sum / n;
+  let min = vmin, max = vmax;
+  if (min === max) { const d = Math.abs(min) * 0.01 || 1; min -= d; max += d; }
+  else { const d = (max - min) * 0.12; min -= d; max += d; }
+
+  // X-Werte: Probe-Hold/Einzelmessung = Nummer, Aufzeichnung = Sekunden
+  const xs = trend ? times : nrs.map(k => k - 1);
+  const xmin = 0;
+  let xmax;
+  if (trend) {
+    const last = xs[n - 1];
+    xmax = S.target > 0 ? Math.max((S.target - 1) * S.interval, last, 1) : Math.max(last, 10);
+  } else {
+    xmax = Math.max(S.target, nrs[n - 1], 2) - 1;
+  }
+  const X = x => L + ((x - xmin) / (xmax - xmin)) * pw;
+  const Y = v => T + (1 - (v - min) / (max - min)) * ph;
+
+  ctx.lineWidth = 1; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let k = 0; k < 5; k++) {
+    const v = min + (max - min) * k / 4, y = Y(v);
+    ctx.strokeStyle = cBorder; ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(W - R, y); ctx.stroke();
+    ctx.fillStyle = cMuted; ctx.fillText(fmt(Number(v.toPrecision(4))), L - 8, y);
+  }
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  if (trend) {
+    const steps = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 14400, 43200, 86400, 172800];
+    const maxTicks = Math.max(2, Math.floor(pw / 60));
+    const st = steps.find(s => xmax / s <= maxTicks) || steps[steps.length - 1];
+    for (let t = 0; t <= xmax + 1e-9; t += st) {
+      const x = X(t);
+      ctx.strokeStyle = cBorder; ctx.beginPath(); ctx.moveTo(x, T + ph); ctx.lineTo(x, T + ph + 4); ctx.stroke();
+      ctx.fillStyle = cMuted; ctx.fillText(fmtTime(t, st), x, H - B + 8);
+    }
+  } else {
+    const cnt = xmax + 1;
+    const step = Math.max(1, Math.ceil(cnt / Math.floor(pw / 32)));
+    for (let i = 0; i < cnt; i++) {
+      if (i !== 0 && i !== cnt - 1 && i % step !== 0) continue;
+      ctx.fillStyle = cMuted; ctx.fillText(String(i + 1), X(i), H - B + 8);
+    }
+  }
+  ctx.save(); ctx.translate(12, T + ph / 2); ctx.rotate(-Math.PI / 2);
+  ctx.fillStyle = cMuted; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.fillText(S.unit, 0, -4); ctx.restore();
+
+  // Mittelwert
+  ctx.setLineDash([5, 4]); ctx.strokeStyle = cOk; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(L, Y(mean)); ctx.lineTo(W - R, Y(mean)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Linie; bei sehr vielen Werten pro Bildpunkt-Spalte nur Min/Max zeichnen
+  ctx.strokeStyle = cAccent; ctx.lineWidth = n > 300 ? 1.5 : 2; ctx.lineJoin = "round";
+  ctx.beginPath();
+  if (n > pw * 2) {
+    let col = null, lo = 0, hi = 0;
+    const flush = () => { ctx.lineTo(col, Y(lo)); ctx.lineTo(col, Y(hi)); };
+    for (let i = 0; i < n; i++) {
+      const c = Math.round(X(xs[i]));
+      if (c !== col) { if (col !== null) flush(); else ctx.moveTo(c, Y(vals[i])); col = c; lo = hi = vals[i]; }
+      else { if (vals[i] < lo) lo = vals[i]; if (vals[i] > hi) hi = vals[i]; }
+    }
+    flush();
+  } else {
+    vals.forEach((v, i) => i ? ctx.lineTo(X(xs[i]), Y(v)) : ctx.moveTo(X(xs[i]), Y(v)));
+  }
+  ctx.stroke();
+  if (n <= 60) {
+    vals.forEach((v, i) => { ctx.beginPath(); ctx.arc(X(xs[i]), Y(v), 3.5, 0, Math.PI * 2); ctx.fillStyle = cAccent; ctx.fill(); });
+  }
+  ctx.beginPath(); ctx.arc(X(xs[n - 1]), Y(vals[n - 1]), 6, 0, Math.PI * 2);
+  ctx.strokeStyle = cText; ctx.lineWidth = 1.5; ctx.stroke();
+
+  let sq = 0;
+  for (const v of vals) sq += (v - mean) ** 2;
+  const sd = n > 1 ? Math.sqrt(sq / (n - 1)) : 0;
+  $("stats").textContent = `n ${n} · Ø ${fmt(mean)} ${S.unit} · Min ${fmt(vmin)} · Max ${fmt(vmax)} · σ ${fmt(sd)}`;
+}
+window.addEventListener("resize", drawChart);
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener?.("change", drawChart);
+
+// ---------- Start ----------
+(async () => {
+  if (location.protocol === "file:") {
+    setStatus($("setupStatus"), "Diese Seite braucht das Programm keysight_34461a_web.py: Bitte das Skript starten, es öffnet die Seite automatisch im Browser. Der Browser kann nicht selbst per LAN mit dem Gerät sprechen.", "err");
+    $("btnConnect").disabled = true; $("btnBrowse").disabled = true;
+    return;
+  }
+  META = await (await fetch("/api/meta", { cache:"no-store" })).json();
+  fillSelect($("func"), Object.entries(META.functions).map(([k, f]) => [k, f.label]));
+  fillSelect($("nplc"), [["", "Standard (10)"], ...META.nplc.map(v => [v, v.replace(".", ",")])]);
+  applyConfig(META.config || {});
+  if ($("path").value) showFileInfo(await api("/api/fileinfo", { path: $("path").value }));
+  // Laeuft noch eine Messung (Seite neu geladen)? Dann direkt die Messansicht zeigen
+  const s = await (await fetch("/api/state?since=0&ver=-1", { cache:"no-store" })).json();
+  if (s.connected || s.lost) showMeasure();
+})();
+</script>
+</body>
+</html>

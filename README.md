@@ -13,6 +13,7 @@ Kleine Python-Skripte für die Arbeit im Labor.
 | `keysight_dut_probehold_gui.py` | Wie `keysight_dut_probehold.py`, mit grafischer Oberfläche (tkinter): IP, Messfunktion, DUT-Anzahl, CSV-Pfad und Stabilitätsparameter lassen sich in Feldern eintragen, Verbinden/Start/Abbrechen per Button, Log live im Fenster. | `pyvisa`, `pyvisa-py` |
 | `keysight_34461a_web.py` + `keysight_34461a.html` | Fasst die Keysight-Skripte in einem Programm mit Browser-Oberfläche zusammen (Aufbau wie `Resistomat_V2.html`). Beim Start erscheint ein Menü: Modus (**Probe-Hold**, **Messwerte aufzeichnen**, **Einzelmessungen**), IP/Verbindungsart, Messfunktion, Messbereich, NPLC, Einheit, Ablauf-Parameter und CSV-Datei. Live-Wert, Verlaufsdiagramm mit Statistik, Piepton am PC und/oder Gerät. CSV mit Semikolon und Dezimalkomma, vorhandene Dateien werden weitergeführt. | `pyvisa`, `pyvisa-py` |
 | `keysight_34461a.ps1` + `keysight_34461a.html` | Gleiches Programm wie `keysight_34461a_web.py`, aber in PowerShell: keine Installation nötig. Verbindung nur über Raw-Socket (Port 5025). Start per Rechtsklick → „Mit PowerShell ausführen“. | – (Windows PowerShell 5.1) |
+| `Keysight_Messung.exe` | `keysight_34461a_web.py` mit der HTML-Oberfläche als einzelne Windows-Datei, ohne Python. Wird bei jeder Änderung automatisch von GitHub Actions gebaut und getestet (Actions → „Keysight .exe bauen“ → Artifacts). Doppelklick genügt. | – |
 
 ## Installation
 

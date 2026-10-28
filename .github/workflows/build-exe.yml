@@ -1,0 +1,45 @@
+# Baut Keysight_Messung.exe (keysight_34461a_web.py + keysight_34461a.html)
+# auf einem Windows-Rechner von GitHub und testet sie gegen ein simuliertes
+# 34461A. Die fertige .exe liegt danach unter Actions -> Lauf -> Artifacts.
+name: Keysight .exe bauen
+
+on:
+  push:
+    paths:
+      - keysight_34461a_web.py
+      - keysight_34461a.html
+      - tests/smoke_exe.py
+      - .github/workflows/build-exe.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Abhaengigkeiten installieren
+        run: pip install pyinstaller==6.11.1 pyvisa==1.14.1 pyvisa-py==0.7.2
+
+      - name: .exe bauen
+        run: >
+          pyinstaller --onefile --console --name Keysight_Messung
+          --add-data "keysight_34461a.html;."
+          --collect-all pyvisa_py --copy-metadata pyvisa --copy-metadata pyvisa-py
+          keysight_34461a_web.py
+
+      - name: .exe mit simuliertem Geraet testen
+        run: python tests/smoke_exe.py dist/Keysight_Messung.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Keysight_Messung
+          path: dist/Keysight_Messung.exe
+          retention-days: 90

@@ -30,14 +30,18 @@ Voraussetzungen:
 """
 
 import json
+import os
 import queue
+import sys
 import threading
 import time
+import traceback
 import webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+from urllib.request import urlopen
 
 import pyvisa
 
@@ -48,7 +52,8 @@ CONFIG_PATH = Path.home() / '.keysight_34461a_config.json'
 OVERLOAD = 9.0e37       # Geraet meldet Ueberlast als +/-9.9E37
 MAX_ERRORS = 3          # aufeinanderfolgende Lesefehler bis "Verbindung verloren"
 IDLE_POLL = 0.3         # s, Abfrage fuer die Live-Anzeige, wenn nichts aufgezeichnet wird
-PAGE_PATH = Path(__file__).with_name('keysight_34461a.html')   # Oberflaeche, liegt neben dem Skript
+# Oberflaeche: liegt neben dem Skript bzw. ist in die .exe eingepackt (PyInstaller)
+PAGE_PATH = Path(getattr(sys, '_MEIPASS', Path(__file__).parent)) / 'keysight_34461a.html'
 LOCK_MSG = ('Datei gesperrt (z.B. in Excel geoeffnet). Bitte schliessen - '
             'Werte bleiben im Speicher und werden nachgeschrieben.')
 
@@ -715,6 +720,14 @@ def quit_program(data):
     return {'ok': True}
 
 
+def already_running():
+    try:
+        with urlopen(f'http://{HOST}:{PORT}/api/meta', timeout=2) as r:
+            return b'"functions"' in r.read()
+    except Exception:
+        return False
+
+
 def main():
     global SERVER
     if not PAGE_PATH.exists():
@@ -723,12 +736,18 @@ def main():
     try:
         SERVER = ThreadingHTTPServer((HOST, PORT), Handler)
     except OSError:
+        if already_running():
+            print('Das Messprogramm laeuft bereits - oeffne den Browser.')
+            webbrowser.open(f'http://{HOST}:{PORT}/')
+            time.sleep(2)
+            return
         SERVER = ThreadingHTTPServer((HOST, 0), Handler)   # Port belegt -> freien nehmen
     url = f'http://{HOST}:{SERVER.server_port}/'
     print('Keysight 34461A - Messprogramm')
     print(f'Oberflaeche: {url}')
     print('Dieses Fenster offen lassen. Beenden mit "Programm beenden" im Browser oder Strg+C.')
-    webbrowser.open(url)
+    if not os.environ.get('KEYSIGHT_NO_BROWSER'):
+        webbrowser.open(url)
     try:
         SERVER.serve_forever()
     except KeyboardInterrupt:
@@ -742,4 +761,12 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if getattr(sys, 'frozen', False):
+        # .exe per Doppelklick: bei einem Fehler das Fenster offen lassen
+        try:
+            main()
+        except Exception:
+            traceback.print_exc()
+            input('Enter zum Beenden')
+    else:
+        main()

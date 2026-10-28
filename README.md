@@ -12,6 +12,7 @@ Kleine Python-Skripte für die Arbeit im Labor.
 | `keysight_trend_logger.py` | Kontinuierliche Trendmessung am Keysight 34461A (LAN) mit Live-Plot und parallelem CSV-Log (`trend_messung.csv`, `Zeit_s`, `Messwert`, eine Zeile pro Messung). Für Langzeit-Monitoring eines Signals über Stunden. | `pyvisa`, `pyvisa-py`, `matplotlib` |
 | `keysight_dut_probehold_gui.py` | Wie `keysight_dut_probehold.py`, mit grafischer Oberfläche (tkinter): IP, Messfunktion, DUT-Anzahl, CSV-Pfad und Stabilitätsparameter lassen sich in Feldern eintragen, Verbinden/Start/Abbrechen per Button, Log live im Fenster. | `pyvisa`, `pyvisa-py` |
 | `keysight_34461a_web.py` + `keysight_34461a.html` | Fasst die Keysight-Skripte in einem Programm mit Browser-Oberfläche zusammen (Aufbau wie `Resistomat_V2.html`). Beim Start erscheint ein Menü: Modus (**Probe-Hold**, **Messwerte aufzeichnen**, **Einzelmessungen**), IP/Verbindungsart, Messfunktion, Messbereich, NPLC, Einheit, Ablauf-Parameter und CSV-Datei. Live-Wert, Verlaufsdiagramm mit Statistik, Piepton am PC und/oder Gerät. CSV mit Semikolon und Dezimalkomma, vorhandene Dateien werden weitergeführt. | `pyvisa`, `pyvisa-py` |
+| `keysight_34461a.ps1` + `keysight_34461a.html` | Gleiches Programm wie `keysight_34461a_web.py`, aber in PowerShell: keine Installation nötig. Verbindung nur über Raw-Socket (Port 5025). Start per Rechtsklick → „Mit PowerShell ausführen“. | – (Windows PowerShell 5.1) |
 
 ## Installation
 

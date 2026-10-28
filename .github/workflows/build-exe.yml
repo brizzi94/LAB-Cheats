@@ -1,6 +1,7 @@
 # Baut Keysight_Messung.exe (keysight_34461a_web.py + keysight_34461a.html)
 # auf einem Windows-Rechner von GitHub und testet sie gegen ein simuliertes
-# 34461A. Die fertige .exe liegt danach unter Actions -> Lauf -> Artifacts.
+# 34461A. Die fertige .exe liegt danach unter Releases -> "keysight-exe"
+# (https://github.com/brizzi94/LAB-Cheats/releases/tag/keysight-exe).
 name: Keysight .exe bauen
 
 on:
@@ -13,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # fuer das Release mit der .exe
 
 jobs:
   build:
@@ -43,3 +44,14 @@ jobs:
           name: Keysight_Messung
           path: dist/Keysight_Messung.exe
           retention-days: 90
+
+      - name: Als Release "keysight-exe" bereitstellen
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete keysight-exe --yes --cleanup-tag || true
+          gh release create keysight-exe dist/Keysight_Messung.exe \
+            --target "$GITHUB_SHA" \
+            --title "Keysight 34461A Messprogramm (.exe)" \
+            --notes "Keysight_Messung.exe herunterladen, in einen eigenen Ordner legen und doppelklicken. Der Browser oeffnet sich mit dem Menue (Probe-Hold, Messwerte aufzeichnen, Einzelmessungen). Das schwarze Fenster offen lassen, solange gemessen wird. Gebaut aus $GITHUB_SHA."

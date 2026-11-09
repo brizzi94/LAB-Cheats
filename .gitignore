@@ -3,3 +3,6 @@ __pycache__/
 
 # Messprotokolle des Z+ Skripts
 z_plus_log_*.csv
+
+# Aufnahmen des Scope-Skripts
+scope_captures/

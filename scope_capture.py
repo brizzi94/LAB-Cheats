@@ -3,7 +3,7 @@ scope_capture.py – Aktuelles Bild eines Teledyne LeCroy WaveSurfer erfassen
 
 - liest alle eingeschalteten Kanäle (C1–C4, F1–F4) als Rohdaten (binär, voll aufgelöst)
 - speichert sie als CSV (Zeit + Kanäle, Einheiten im Header, Trennzeichen ';')
-- zeigt die Kurven als Plot und speichert ihn als PNG
+- zeigt die Kurven in einem Plotfenster (wird nicht als Datei gespeichert)
 - optional: Screenshot des Scope-Displays (--screenshot)
 
 Installation (Windows):
@@ -13,7 +13,7 @@ Aufruf:
     py scope_capture.py                 -> IP aus SCOPE_IP unten
     py scope_capture.py 192.168.1.50    -> IP als Argument
     py scope_capture.py --screenshot    -> zusätzlich Display-Screenshot
-    py scope_capture.py --no-plot       -> nur CSV + PNG, kein Plotfenster
+    py scope_capture.py --no-plot       -> nur CSV, kein Plotfenster
 
 Scope: Utilities -> Utilities Setup -> Remote -> LXI (VXI-11) aktivieren, IP ablesen.
 """
@@ -168,10 +168,7 @@ def time_scale(t, unit="s"):
     return 1, "s"
 
 
-def plot(waves, png_path, show=True):
-    import matplotlib
-    if not show:
-        matplotlib.use("Agg")
+def plot(waves, title):
     import matplotlib.pyplot as plt
 
     shared = _same_time_axis(waves)
@@ -191,11 +188,9 @@ def plot(waves, png_path, show=True):
             ax.set_xlabel(f"[{tu}]")
     if shared:
         axes[-1, 0].set_xlabel(f"Zeit [{tu}]")
-    fig.suptitle(png_path.stem, fontsize=10)
+    fig.suptitle(title, fontsize=10)
     fig.tight_layout()
-    fig.savefig(png_path, dpi=150)
-    if show:
-        plt.show()
+    plt.show()
 
 
 def screenshot(scope, path):
@@ -245,9 +240,8 @@ def main():
 
     for p in save_csv(base.with_suffix(".csv"), waves):
         print("CSV:", p)
-    png = base.with_name(base.name + "_plot.png")
-    plot(waves, png, show=not args.no_plot)
-    print("Plot:", png)
+    if not args.no_plot:
+        plot(waves, base.name)
 
 
 if __name__ == "__main__":
